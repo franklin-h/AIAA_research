@@ -1,6 +1,14 @@
+# try:
+#     # Try importing the library
+#     import neuralforecast
+# except ImportError:
+#     # If it raises ImportError, then install the library
+#     pip install neuralforecast
+
 import os
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"]="1" # ARM chips on mac don't yet support certain features. make sure this is the VERY FIRST command to run.
 
+# import neuralforecast
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -8,8 +16,10 @@ from neuralforecast import NeuralForecast
 from neuralforecast.models import RNN
 from neuralforecast.losses.pytorch import MQLoss, DistributionLoss
 from neuralforecast.utils import AirPassengersPanel, AirPassengersStatic
+# from google.colab import drive
+# drive.mount('/content/drive')
 
-csv_file = 'smoothed_time_series_3s_1_rnn 2.csv'  # Replace with your CSV file name
+csv_file = 'smoothed_time_series_6s.csv'  # Replace with your CSV file name
 df = pd.read_csv(csv_file)
 
 # Step 2: Convert 'ds' column to datetime
@@ -31,14 +41,15 @@ Y_df = pd.read_parquet(parquet_file)
 
 Y_df.to_csv("y_df.csv")
 
+training_and_validation_size = 4800
+num_data_points = df.shape[0]
+Y_train_df = Y_df[Y_df.ds<Y_df['ds'].values[-(num_data_points - training_and_validation_size)]] # 2500 train
+Y_test_df = Y_df[Y_df.ds>=Y_df['ds'].values[-(num_data_points - training_and_validation_size)]].reset_index(drop=True) # 500 test
 
-Y_train_df = Y_df[Y_df.ds<Y_df['ds'].values[-500]] # 2500 train
-Y_test_df = Y_df[Y_df.ds>=Y_df['ds'].values[-500]].reset_index(drop=True) # 500 test
-
-timeseriesStatic = pd.read_csv("smoothed_timeseries_static.csv")
+# timeseriesStatic = pd.read_csv("smoothed_timeseries_static.csv")
 
 fcst = NeuralForecast(
-    models=[RNN(h=400,
+    models=[RNN(h=1200,
                 input_size=-1,
                 inference_input_size=40, # when predicting next value, how many prior data points to use?
                 loss=MQLoss(level=[80, 90]),
@@ -48,7 +59,7 @@ fcst = NeuralForecast(
                 context_size=10,  # how big window is when "scanning" through previous data
                 decoder_hidden_size=128, # size of each layer (64, 256)
                 decoder_layers=3, # number of "backward" layers in neural network
-                max_steps=50,
+                max_steps=1,
                 futr_exog_list=['y_[lag100]'],
                 hist_exog_list=['y_[lag100]'],
                 # stat_exog_list=['h1'],
@@ -56,7 +67,8 @@ fcst = NeuralForecast(
     ],
     freq='D' # Don't use M!!
 )
-fcst.fit(df=Y_train_df,val_size=400)
+
+fcst.fit(df=Y_train_df,val_size=1200)
 # fcst.get_missing_future(futr_df=Y_test_df)
 forecasts = fcst.predict(futr_df=Y_test_df)
 
@@ -75,4 +87,3 @@ plt.legend()
 plt.grid()
 plt.plot()
 plt.show()
-
