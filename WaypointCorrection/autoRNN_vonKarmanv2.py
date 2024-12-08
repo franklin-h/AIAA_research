@@ -19,7 +19,7 @@ from neuralforecast.utils import AirPassengersPanel, AirPassengersStatic
 # from google.colab import drive
 # drive.mount('/content/drive')
 
-csv_file = 'smoothed_time_series_6s.csv'  # Replace with your CSV file name
+csv_file = 'smoothed_time_series_10s.csv'  # Replace with your CSV file name
 df = pd.read_csv(csv_file)
 
 # Step 2: Convert 'ds' column to datetime
@@ -41,7 +41,7 @@ Y_df = pd.read_parquet(parquet_file)
 
 Y_df.to_csv("y_df.csv")
 
-training_and_validation_size = 4800
+training_and_validation_size = 8000
 num_data_points = df.shape[0]
 Y_train_df = Y_df[Y_df.ds<Y_df['ds'].values[-(num_data_points - training_and_validation_size)]] # 2500 train
 Y_test_df = Y_df[Y_df.ds>=Y_df['ds'].values[-(num_data_points - training_and_validation_size)]].reset_index(drop=True) # 500 test
@@ -49,7 +49,7 @@ Y_test_df = Y_df[Y_df.ds>=Y_df['ds'].values[-(num_data_points - training_and_val
 # timeseriesStatic = pd.read_csv("smoothed_timeseries_static.csv")
 
 fcst = NeuralForecast(
-    models=[RNN(h=1200,
+    models=[RNN(h=2000,
                 input_size=-1,
                 inference_input_size=40, # when predicting next value, how many prior data points to use?
                 loss=MQLoss(level=[80, 90]),
@@ -68,7 +68,7 @@ fcst = NeuralForecast(
     freq='D' # Don't use M!!
 )
 
-fcst.fit(df=Y_train_df,val_size=1200)
+fcst.fit(df=Y_train_df,val_size=2000)
 # fcst.get_missing_future(futr_df=Y_test_df)
 forecasts = fcst.predict(futr_df=Y_test_df)
 
